@@ -97,6 +97,7 @@ public class ProductService {
 			}).collect(Collectors.toList());
 			ProductServiceVO productResponse = new ProductServiceVO();
 			productResponse.setProducts(productAvailable);
+			productResponse.setOperationStatus(!productAvailable.isEmpty());
 			LOG.info("Product information retrieved:{}", productResponse);
 			return productResponse;
 		} catch (Exception ex) {
@@ -114,7 +115,7 @@ public class ProductService {
 	 */
 
 	@Transactional
-	public Mono<ProductVO> sellProduct(String name) {
+	public Mono<ProductServiceVO> sellProduct(String name) {
 		try {
 			// Wrapper for modifying the artList from based on the optional we receive from
 			// the repository
@@ -124,17 +125,23 @@ public class ProductService {
 			prodRepository.findByName(name).ifPresentOrElse(prod -> {
 				wrapper.artIds = fetchArticleInfoFromProduct(prod, article -> ArticleVO.builder()
 						.amountOf(article.getAmountOf()).artId(article.getArtId()).build());
-				prodRepository.deleteByName(name);
 			}, () -> {
 
 				throw new ProductServiceException(ProductExceptionCode.BAD_REQUEST,
 						"The information provided is not valid");
 			});
-			Mono<ProductVO> inventoryUpdate = productClient
+			Mono<ProductServiceVO> inventoryUpdate = productClient
 					.updateWarehouseInventory(ProductServiceVO.builder().articles(wrapper.artIds).build());
-			return inventoryUpdate.onErrorMap(ProductClientException.class, (exception) -> {
-				LOG.info("Error occurred while updating inventory");
-				return exception;
+			return inventoryUpdate.map(warehouseInventoryCheck -> {
+				LOG.info("Warehouse inventory state:{}", warehouseInventoryCheck);
+				if (!warehouseInventoryCheck.isOperationStatus()) {
+					prodRepository.deleteByName(name);
+					return ProductServiceVO.builder().operationStatus(false).build();
+
+				} else {
+					return ProductServiceVO.builder().operationStatus(true).build();
+
+				}
 			});
 		} catch (NonTransientDataAccessException ex) {
 			throw new ProductServiceException(ProductExceptionCode.BAD_REQUEST,
