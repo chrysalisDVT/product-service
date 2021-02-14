@@ -33,11 +33,13 @@ public class ProductServiceClient {
 	 * @param productDetails
 	 * @return
 	 */
-	public Mono<ProductVO> updateWarehouseInventory(final ProductServiceVO productDetails) {
+	public Mono<ProductServiceVO> updateWarehouseInventory(final ProductServiceVO productDetails) {
 		try {
-			Mono<ProductVO> prodVo = webClient.patch().uri(wareHouseServiceUri)
+			LOG.info("Verifying warehouse inventory....");
+
+			Mono<ProductServiceVO> prodVo = webClient.patch().uri(wareHouseServiceUri)
 					.header("Content-Type", "application/json").bodyValue(productDetails).retrieve()
-					.bodyToMono(ProductVO.class);
+					.bodyToMono(ProductServiceVO.class);
 			return prodVo;
 		} catch (Exception ex) {
 			throw new ProductClientException(ProductExceptionCode.BAD_REQUEST, "Error while invoking api");
