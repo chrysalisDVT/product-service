@@ -58,7 +58,7 @@ public class ProductController {
 	 */
 	@DeleteMapping(value="/{productName}")
 	public Mono<ProductServiceVO> sellProduct(@PathVariable("productName") String productName) {
-		return productService.sellProduct(productName).map(prodcutVo-> ProductServiceVO.builder().operationStatus(true).build()) ;
+		 return productService.sellProduct(productName);
 	}
 
 }
